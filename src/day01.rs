@@ -70,21 +70,17 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_calc_fuel_required() -> Result<(), String> {
+    fn test_calc_fuel_required() {
         assert_eq!(calc_fuel_required(12), 2);
         assert_eq!(calc_fuel_required(14), 2);
         assert_eq!(calc_fuel_required(1969), 654);
         assert_eq!(calc_fuel_required(100756), 33583);
-
-        Ok(())
     }
 
     #[test]
-    fn test_calc_fuel_required_re() -> Result<(), String> {
+    fn test_calc_fuel_required_re() {
         assert_eq!(calc_fuel_required_re(14), 2);
         assert_eq!(calc_fuel_required_re(1969), 966);
         assert_eq!(calc_fuel_required_re(100756), 50346);
-
-        Ok(())
     }
 }
