@@ -1,29 +1,40 @@
-use common::aoc::{run_once, load_input, run_many, print_time, print_result};
+use common::aoc::{load_input, run_many, print_time, print_result};
 
 fn main() {
-    let (list, dur_input_load) = run_once(|| {
-        let mut list: Vec<u32> = Vec::with_capacity(128);
+    let input = load_input("day01");
 
-        for line in load_input("day01").lines() {
-            if line.len() == 0 {
-                continue;
-            }
-
-            list.push(line.parse().unwrap());
-        }
-
-        list
-    });
-
+    let (list, dur_parse) = run_many(10000, || parse_input(&input));
     let (res_part1, dur_part1) = run_many(100000, || part1(&list));
     let (res_part2, dur_part2) = run_many(100000, || part2(&list));
 
     print_result("P1", res_part1);
     print_result("P2", res_part2);
 
+    print_time("Parse", dur_parse);
     print_time("P1", dur_part1);
     print_time("P2", dur_part2);
-    print_time("Input", dur_input_load);
+    print_time("Parse + P1", dur_parse + dur_part1);
+    print_time("Parse + P2", dur_parse + dur_part2);
+}
+
+fn parse_input(input: &str) -> Vec<u32> {
+    let mut list: Vec<u32> = Vec::with_capacity(128);
+
+    for line in input.lines() {
+        if line.len() == 0 {
+            continue;
+        }
+
+        let mut sum: u32 = 0;
+        for ch in line.chars() {
+            sum *= 10;
+            sum += ch as u32 - '0' as u32;
+        }
+
+        list.push(sum);
+    }
+
+    list
 }
 
 fn part1(list: &[u32]) -> u32 {
