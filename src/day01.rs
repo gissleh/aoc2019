@@ -20,18 +20,18 @@ fn main() {
 fn parse_input(input: &str) -> Vec<u32> {
     let mut list: Vec<u32> = Vec::with_capacity(128);
 
-    for line in input.lines() {
-        if line.len() == 0 {
-            continue;
+    let mut sum: u32 = 0;
+    for ch in input.chars() {
+        if ch == '\n' || ch == '\r' {
+            if sum > 0 {
+                list.push(sum);
+            }
+            sum = 0;
+            continue
         }
 
-        let mut sum: u32 = 0;
-        for ch in line.chars() {
-            sum *= 10;
-            sum += ch as u32 - '0' as u32;
-        }
-
-        list.push(sum);
+        sum *= 10;
+        sum += ch as u32 - '0' as u32;
     }
 
     list
