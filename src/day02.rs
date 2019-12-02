@@ -64,7 +64,8 @@ fn part2(initial_program: &[u32]) -> u32 {
 
         run_intcode(&mut program);
 
-        if (program[0] / 100) == PART2_TARGET_DIV100 {
+        let hundred = program[0] / 100;
+        if hundred == PART2_TARGET_DIV100 || hundred == PART2_TARGET_DIV100 - 1 {
             let verb = PART2_TARGET - program[0];
 
             return (noun * 100) + verb;
