@@ -1,11 +1,11 @@
-use common::aoc::{load_input, run_many, print_result, print_time, run_once};
+use common::aoc::{load_input, run_many, print_result, print_time};
 
 fn main() {
     let input = load_input("day02");
 
     let (program, dur_parse) = run_many(10000, || parse_input(&input));
-    let (res_part1, dur_part1) = run_once(|| part1(&program));
-    let (res_part2, dur_part2) = run_once(|| part2(&program));
+    let (res_part1, dur_part1) = run_many(10000, || part1(&program));
+    let (res_part2, dur_part2) = run_many(10000, || part2(&program));
 
     print_result("P1", res_part1);
     print_result("P2", res_part2);
