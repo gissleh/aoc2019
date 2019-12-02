@@ -6,12 +6,15 @@ fn main() {
     let (program, dur_parse) = run_many(10000, || parse_input(&input));
     let (res_part1, dur_part1) = run_many(10000, || part1(&program));
     let (res_part2, dur_part2) = run_many(10000, || part2(&program));
+    let (res_part2_bs, dur_part2_bs) = run_many(10000, || part2_bs(&program));
 
     print_result("P1", res_part1);
-    print_result("P2", res_part2);
+    print_result("P2 [Pattern Exploit]", res_part2);
+    print_result("P2 [Binary Search]", res_part2_bs);
     print_time("Parse", dur_parse);
     print_time("P1", dur_part1);
-    print_time("P2", dur_part2);
+    print_time("P2 [Pattern Exploit]", dur_part2);
+    print_time("P2 [Binary Search]", dur_part2_bs);
 }
 
 fn parse_input(input: &str) -> Vec<u32> {
@@ -46,6 +49,9 @@ fn part1(initial_program: &[u32]) -> u32 {
     program[0]
 }
 
+const PART2_TARGET: u32 = 19690720;
+const PART2_TARGET_DIV100: u32 = 196907;
+
 fn part2(initial_program: &[u32]) -> u32 {
     let mut program = initial_program.to_vec();
 
@@ -55,8 +61,8 @@ fn part2(initial_program: &[u32]) -> u32 {
 
         run_intcode(&mut program);
 
-        if (program[0] / 100) == 196907 {
-            let verb = 19690720 - program[0];
+        if (program[0] / 100) == PART2_TARGET_DIV100 {
+            let verb = PART2_TARGET - program[0];
 
             return (noun * 100) + verb;
         }
@@ -65,6 +71,35 @@ fn part2(initial_program: &[u32]) -> u32 {
     }
 
     panic!("Answer not found for noun-verb pairs in range 0..100")
+}
+
+fn part2_bs(initial_program: &[u32]) -> u32 {
+    let mut program = initial_program.to_vec();
+
+    let mut current = 5000;
+    let mut next_jump_weight = 2500;
+
+    loop {
+        program[1]  = current / 100;
+        program[2] = current % 100;
+
+        run_intcode(&mut program);
+
+        let result = program[0];
+        if result == PART2_TARGET {
+            return current;
+        } else if result < PART2_TARGET {
+            current += next_jump_weight;
+        } else {
+            current -= next_jump_weight;
+        }
+
+        if next_jump_weight > 1 {
+            next_jump_weight /= 2;
+        }
+
+        program.copy_from_slice(initial_program);
+    }
 }
 
 fn run_intcode(program: &mut Vec<u32>) {
