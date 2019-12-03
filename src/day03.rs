@@ -109,6 +109,12 @@ impl Wire {
 
             prev = point;
             line_len += line.len();
+
+            if let Some(winner_len) = winner {
+                if line_len > winner_len {
+                    break;
+                }
+            }
         }
 
         winner
