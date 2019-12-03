@@ -16,3 +16,8 @@ if [ ! -f "./input/day02.txt" ]; then
   CURL https://adventofcode.com/2019/day/2/input -o "./input/day02.txt"
 fi
 
+if [ ! -f "./input/day03.txt" ]; then
+  echo "Getting day03 input..."
+  CURL https://adventofcode.com/2019/day/3/input -o "./input/day03.txt"
+fi
+
