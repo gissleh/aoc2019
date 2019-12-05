@@ -65,6 +65,24 @@ impl VM {
             4 => println!("write({}{})",
                           chars[m1 as usize], self.program[position+1],
             ),
+            5 => println!("jit({}{}, {}{})",
+                          chars[m1 as usize], self.program[position+1],
+                          chars[m2 as usize], self.program[position+2],
+            ),
+            6 => println!("jif({}{}, {}{})",
+                          chars[m1 as usize], self.program[position+1],
+                          chars[m2 as usize], self.program[position+2],
+            ),
+            7 => println!("{}{} < {}{} => {}{}",
+                          chars[m1 as usize], self.program[position+1],
+                          chars[m2 as usize], self.program[position+2],
+                          chars[m3 as usize], self.program[position+3],
+            ),
+            8 => println!("{}{} == {}{} => {}{}",
+                          chars[m1 as usize], self.program[position+1],
+                          chars[m2 as usize], self.program[position+2],
+                          chars[m3 as usize], self.program[position+3],
+            ),
             99 => println!("exit"),
             _ => panic!("unknown opcode {}", opcode),
         }
@@ -77,7 +95,7 @@ impl VM {
     pub fn step(&mut self) -> bool {
         let position = self.program_pos;
         let (opcode, m1, m2, m3) = parse_opcode(self.program[position]);
-
+        
         match opcode {
             1 => {
                 self.program_pos += 4;
@@ -114,19 +132,36 @@ impl VM {
                 false
             },
             5 => {
+                if self.read(position + 1, m1) != 0 {
+                    self.program_pos = self.read(position + 2, m2) as usize;
+                } else {
+                    self.program_pos += 3;
+                }
 
                 false
             }
             6 => {
+                if self.read(position + 1, m1) == 0 {
+                    self.program_pos = self.read(position + 2, m2) as usize;
+                } else {
+                    self.program_pos += 3;
+                }
 
                 false
             }
             7 => {
-
+                self.program_pos += 4;
+                self.write(position + 3, m3,
+                    (self.read(position + 1, m1) < self.read(position + 2, m2)) as i32,
+                );
 
                 false
             }
             8 => {
+                self.program_pos += 4;
+                self.write(position + 3, m3,
+                    (self.read(position + 1, m1) == self.read(position + 2, m2)) as i32,
+                );
 
                 false
             }
