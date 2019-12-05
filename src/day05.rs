@@ -5,8 +5,8 @@ fn main() {
     let input = load_input("day05");
 
     let ((mut vm1, mut vm2), dur_parse) = run_many(10000, || parse_input(&input));
-    let (res_part1, dur_part1) = run_many_mut(1, move || part1(&mut vm1));
-    let (res_part2, dur_part2) = run_many_mut(1, move || part2(&mut vm2));
+    let (res_part1, dur_part1) = run_many_mut(10000, move || part1(&mut vm1));
+    let (res_part2, dur_part2) = run_many_mut(10000, move || part2(&mut vm2));
 
     print_result("P1", res_part1);
     print_result("P2", res_part2);

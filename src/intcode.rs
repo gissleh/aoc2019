@@ -95,7 +95,7 @@ impl VM {
     pub fn step(&mut self) -> bool {
         let position = self.program_pos;
         let (opcode, m1, m2, m3) = parse_opcode(self.program[position]);
-        
+
         match opcode {
             1 => {
                 self.program_pos += 4;
@@ -105,7 +105,7 @@ impl VM {
                 );
 
                 false
-            },
+            }
             2 => {
                 self.program_pos += 4;
                 self.write(
@@ -114,7 +114,7 @@ impl VM {
                 );
 
                 false
-            },
+            }
             3 => {
                 self.program_pos += 2;
                 self.write(
@@ -124,13 +124,13 @@ impl VM {
                 self.input_pos += 1;
 
                 false
-            },
+            }
             4 => {
                 self.program_pos += 2;
                 self.output.push(self.read(position + 1, m1));
 
                 false
-            },
+            }
             5 => {
                 if self.read(position + 1, m1) != 0 {
                     self.program_pos = self.read(position + 2, m2) as usize;
@@ -167,8 +167,8 @@ impl VM {
             }
             99 => {
                 true
-            },
-            _ => panic!("Unknown opcode {}", opcode),
+            }
+            _ => panic!("Unknown opcode {}", opcode)
         }
     }
 
