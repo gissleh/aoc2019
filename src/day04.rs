@@ -6,19 +6,25 @@ fn main() {
     let ((start, end), dur_parse) = run_many(10000, || parse_input(&input));
     let (res_part1_bf, dur_part1_bf) = run_many(100, || part1_bf(start, end));
     let (res_part1_skip, dur_part1_skip) = run_many(100, || part1_skip(start, end));
+    let (res_part1_myriad, dur_part1_myriad) = run_many(100, || part1_myriad(start, end));
     let (res_part2_bf, dur_part2_bf) = run_many(100, || part2_bf(start, end));
     let (res_part2_skip, dur_part2_skip) = run_many(100, || part2_skip(start, end));
+    let (res_part2_myriad, dur_part2_myriad) = run_many(100, || part2_myriad(start, end));
 
     print_result("P1: Brute Force", res_part1_bf);
     print_result("P1: Skip", res_part1_skip);
+    print_result("P1: Myriad", res_part1_myriad);
     print_result("P2: Brute Force", res_part2_bf);
     print_result("P2: Skip", res_part2_skip);
+    print_result("P2: Myriad", res_part2_myriad);
 
     print_time("Parse", dur_parse);
     print_time("P1: Brute Force", dur_part1_bf);
     print_time("P1: Skip", dur_part1_skip);
+    print_time("P1: Myriad", dur_part1_myriad);
     print_time("P2: Brute Force", dur_part2_bf);
     print_time("P2: Skip", dur_part2_skip);
+    print_time("P2: Myriad", dur_part2_myriad);
 }
 
 fn part1_bf(start: u32, end: u32) -> u32 {
@@ -49,6 +55,39 @@ fn part1_skip(start: u32, end: u32) -> u32 {
     count
 }
 
+const UNSET_TT: u32 = 1000000;
+
+fn part1_myriad(start: u32, end: u32) -> u32 {
+    let start_myriad = start / 10000;
+    let end_myriad = end / 10000;
+
+    let mut total = part1_skip(start, (start_myriad * 10000) + 9999) + part1_skip(end_myriad * 10000, end);
+    let mut last_10: [u32; 10] = [UNSET_TT; 10];
+
+    for myriad in (start_myriad+1)..end_myriad {
+        let ht = myriad / 10;
+        let tt = myriad % 10;
+        let mt = myriad * 10000;
+
+        if ht > tt {
+            continue;
+        } else if ht == tt {
+            total += part1_skip(mt, mt + 9999);
+        } else {
+            if last_10[tt as usize] != UNSET_TT {
+                total += last_10[tt as usize];
+            } else {
+                let n = part1_skip(mt, mt + 9999);
+
+                last_10[tt as usize] = n;
+                total += n;
+            }
+        }
+    }
+
+    total
+}
+
 fn part2_bf(start: u32, end: u32) -> u32 {
     let mut count = 0;
 
@@ -76,6 +115,37 @@ fn part2_skip(start: u32, end: u32) -> u32 {
     }
 
     count
+}
+
+fn part2_myriad(start: u32, end: u32) -> u32 {
+    let start_myriad = start / 10000;
+    let end_myriad = end / 10000;
+
+    let mut total = part2_skip(start, (start_myriad * 10000) + 9999) + part2_skip(end_myriad * 10000, end);
+    let mut last_10: [u32; 10] = [UNSET_TT; 10];
+
+    for myriad in (start_myriad+1)..end_myriad {
+        let ht = myriad / 10;
+        let tt = myriad % 10;
+        let mt = myriad * 10000;
+
+        if ht > tt {
+            continue;
+        } else if ht == tt {
+            total += part2_skip(mt, mt + 9999);
+        } else {
+            if last_10[tt as usize] != UNSET_TT {
+                total += last_10[tt as usize];
+            } else {
+                let n = part2_skip(mt, mt + 9999);
+
+                last_10[tt as usize] = n;
+                total += n;
+            }
+        }
+    }
+
+    total
 }
 
 fn parse_input(input: &str) -> (u32, u32) {
