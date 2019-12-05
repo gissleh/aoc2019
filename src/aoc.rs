@@ -37,6 +37,17 @@ pub fn run_many<T>(times: usize, callback: impl Fn() -> T) -> (T, i64) {
     (result, start.to(end).num_nanoseconds().unwrap() / times as i64)
 }
 
+pub fn run_many_mut<T>(times: usize, mut callback: impl FnMut() -> T) -> (T, i64) {
+    let start = PreciseTime::now();
+    let mut result = callback();
+    for _ in 1..times {
+        result =    callback();
+    }
+    let end = PreciseTime::now();
+
+    (result, start.to(end).num_nanoseconds().unwrap() / times as i64)
+}
+
 pub fn print_result(label: &str, result: impl Display) {
     println!("Result ({}): {}", label, result);
 }
