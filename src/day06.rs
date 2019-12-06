@@ -1,12 +1,12 @@
+use std::collections::BTreeMap;
 use common::aoc::{load_input, run_many, print_time, print_result};
-use std::thread::current;
 
 fn main() {
     let input = load_input("day06");
 
-    let (tree, dur_parse) = run_many(100, || OrbitTree::parse(&input));
-    let (res_part1, dur_part1) = run_many(1000, || tree.checksum(tree.com_index, 0));
-    let (res_part2, dur_part2) = run_many(1000, || tree.num_transfers("YOU", "SAN"));
+    let (set, dur_parse) = run_many(1000, || OrbiterSet::parse(&input));
+    let (res_part1, dur_part1) = run_many(1000, || set.checksum());
+    let (res_part2, dur_part2) = run_many(1000, || set.num_transfers("YOU", "SAN"));
 
     print_result("P1", res_part1);
     print_result("P2", res_part2);
@@ -16,91 +16,126 @@ fn main() {
     print_time("P2", dur_part2);
 }
 
-struct OrbitTree {
-    nodes: Vec<OrbitNode>,
-    com_index: usize,
+struct OrbiterSet {
+    list: Vec<Orbiter>,
+    map: BTreeMap<u32, usize>,
 }
 
-impl OrbitTree {
-    fn node(&self, name: &str) -> Option<usize> {
-        for (index, node) in self.nodes.iter().enumerate() {
-            if &node.name == name {
-                return Some(index);
-            }
-        }
+impl OrbiterSet {
+    fn ensure_orbiter(&mut self, name: &str) -> usize {
+        let name_key = str_to_key(name);
 
-        None
+        if let Some(index) = self.map.get(&name_key) {
+            *index
+        } else {
+            let index = self.list.len();
+            self.list.push(Orbiter{
+                name_key,
+                parent: 0,
+            });
+
+            self.map.insert(name_key, index);
+
+            index
+        }
     }
 
-    fn ensure_node(&mut self, name: &str) -> usize {
-        for (index, node) in self.nodes.iter().enumerate() {
-            if &node.name == name {
-                return index
-            }
-        }
-
-        self.nodes.push(OrbitNode{
-            name: name.to_string(),
-            children: Vec::with_capacity(32),
-            parent: self.nodes.len(),
-        });
-
-        self.nodes.len() - 1
+    fn find_orbiter(&self, name: &str) -> usize {
+        let name_key = str_to_key(name);
+        *self.map.get(&name_key).unwrap()
     }
 
-    fn checksum(&self, index: usize, level: u32) -> u32 {
-        let mut total = level;
+    fn checksum(&self) -> u32 {
+        let mut levels: Vec<u32> = vec![0; self.list.len()];
+        let mut stack: Vec<usize> = Vec::with_capacity(16);
 
-        for child_index in self.nodes[index].children.iter() {
-            total += self.checksum(*child_index, level + 1);
-        }
+        for (index, orbiter) in self.list.iter().enumerate() {
+            if orbiter.parent == index || levels[index] != 0 {
+                continue;
+            }
 
-        total
+            stack.clear();
+
+            let offset: u32;
+            let mut current_index = orbiter.parent;
+
+            loop {
+                let orbiter = &self.list[current_index];
+                if orbiter.parent == current_index {
+                    offset = 0;
+                    break;
+                }
+
+                let level = levels[current_index];
+                if level != 0 {
+                    offset = level;
+                    break;
+                }
+
+                stack.push(current_index);
+
+                current_index = orbiter.parent;
+            }
+
+            for (i, current_index) in stack.iter().enumerate() {
+                levels[*current_index] = offset + (stack.len() - i) as u32;
+            }
+
+            levels[index] = 1 + offset + stack.len() as u32;
+        };
+
+        levels.iter().sum()
     }
 
     fn num_transfers(&self, from: &str, to: &str) -> u32 {
-        let from_index = self.node(from).unwrap();
-        let to_index = self.node(to).unwrap();
+        let from_index = self.find_orbiter(from);
+        let to_index = self.find_orbiter(to);
+        let infinite_distance = self.list.len() as u32;
+        let mut distances: Vec<u32> = vec![infinite_distance; self.list.len()];
 
-        let mut from_parents: Vec<usize> = Vec::with_capacity(64);
-
-        let mut current_index = from_index;
-        while current_index != self.com_index {
-            current_index = self.nodes[current_index].parent;
-
-            from_parents.push(current_index);
-
-            if current_index == to_index {
-                return from_parents.len() as u32;
-            }
-        }
-
+        let mut current_index = self.list[from_index].parent;
         let mut distance = 0;
-        current_index = to_index;
-        while current_index != self.com_index {
-            current_index = self.nodes[current_index].parent;
+        loop {
+            distances[current_index] = distance;
 
-            for (index, from_parent) in from_parents.iter().enumerate() {
-                if *from_parent == current_index {
-                    return distance + index as u32;
-                }
+            let parent = self.list[current_index].parent;
+            if parent == current_index {
+                break;
             }
 
+            current_index = parent;
             distance += 1;
         }
 
-        panic!("Not found");
+        let mut current_index = self.list[to_index].parent;
+        let mut distance = 0;
+        loop {
+            let other_distance = distances[current_index];
+            if other_distance != infinite_distance {
+                return distance + other_distance;
+            }
+
+            let parent = self.list[current_index].parent;
+            if parent == current_index {
+                break;
+            }
+
+            current_index = parent;
+            distance += 1;
+        }
+
+        panic!("No orbit!");
     }
 
-    fn new() -> OrbitTree {
-        OrbitTree{
-            nodes: Vec::with_capacity(256),
-            com_index: 0,
+    fn new() -> OrbiterSet {
+        OrbiterSet {
+            list: Vec::with_capacity(512),
+            map: BTreeMap::new(),
         }
     }
 
-    fn parse(str: &str) -> OrbitTree {
-        let mut tree = Self::new();
+    fn parse(str: &str) -> OrbiterSet {
+        let mut om = Self::new();
 
         for line in str.lines() {
             if line.len() < 2 {
@@ -111,44 +146,67 @@ impl OrbitTree {
             let left: &str = tokens.next().unwrap();
             let right: &str = tokens.next().unwrap();
 
-            let left_index = tree.ensure_node(left);
-            let right_index = tree.ensure_node(right);
+            let left_index = om.ensure_orbiter(left);
+            let right_index = om.ensure_orbiter(right);
 
-            if left == "COM" {
-                tree.com_index = left_index;
-            }
-
-            tree.nodes[left_index].children.push(right_index);
-            tree.nodes[right_index].parent = left_index;
+            om.list[right_index].parent = left_index;
         }
 
-        tree
+        let com_index = om.find_orbiter("COM");
+        om.list[com_index].parent = com_index;
+
+        om
     }
 }
 
-struct OrbitNode {
-    name: String,
+fn str_to_key(str: &str) -> u32 {
+    if str.len() == 3 {
+        let mut chars = str.chars();
+        (chars.next().unwrap() as u32 * 256 * 256) +
+        (chars.next().unwrap() as u32 * 256) +
+        (chars.next().unwrap() as u32)
+    } else {
+        str.chars().next().unwrap() as u32
+    }
+}
+
+#[allow(dead_code)]
+fn key_to_str(key: u32) -> String {
+    if key > 256 {
+        [
+            ((key / 256 / 256) % 256) as u8 as char,
+            ((key / 256) % 256) as u8 as char,
+            (key % 256) as u8 as char,
+        ].iter().collect()
+    } else {
+        [key as u8 as char].iter().collect()
+    }
+}
+
+struct Orbiter {
     parent: usize,
-    children: Vec<usize>,
+    #[allow(dead_code)]
+    name_key: u32,
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_tree_checksum() {
-        let tree_str = "COM)B\nB)C\nC)D\nD)E\nE)F\nB)G\nG)H\nD)I\nE)J\nJ)K\nK)L\n";
-        let tree = OrbitTree::parse(tree_str);
+    const INPUT_STR_P1: &str = "COM)B\nB)C\nC)D\nD)E\nE)F\nB)G\nG)H\nD)I\nE)J\nJ)K\nK)L";
+    const INPUT_STR_P2: &str = "COM)B\nB)C\nC)D\nD)E\nE)F\nB)G\nG)H\nD)I\nE)J\nJ)K\nK)L\nK)YOU\nI)SAN\n";
 
-        assert_eq!(tree.checksum(tree.com_index, 0), 42);
+    #[test]
+    fn test_checksum() {
+        let set = OrbiterSet::parse(INPUT_STR_P1);
+
+        assert_eq!(set.checksum(), 42);
     }
 
     #[test]
-    fn test_tree_transfers() {
-        let tree_str = "COM)B\nB)C\nC)D\nD)E\nE)F\nB)G\nG)H\nD)I\nE)J\nJ)K\nK)L\nK)YOU\nI)SAN\n";
-        let tree = OrbitTree::parse(tree_str);
+    fn test_num_transfers() {
+        let set = OrbiterSet::parse(INPUT_STR_P2);
 
-        assert_eq!(tree.num_transfers("YOU", "SAN"), 4);
+        assert_eq!(set.num_transfers("YOU", "SAN"), 4);
     }
 }
