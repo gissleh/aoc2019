@@ -1,5 +1,4 @@
 use common::aoc::{load_input, run_many, print_time, print_result};
-use std::thread::current;
 
 fn main() {
     let input = load_input("day06");
