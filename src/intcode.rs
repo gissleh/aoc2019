@@ -92,6 +92,16 @@ impl VM {
         while !self.step() {}
     }
 
+    pub fn quick_run(&mut self, input: &[i32]) -> i32 {
+        self.reset();
+        for v in input {
+            self.push_input(*v);
+        }
+        self.run();
+
+        *self.output.last().unwrap()
+    }
+
     pub fn step(&mut self) -> bool {
         let position = self.program_pos;
         let (opcode, m1, m2, m3) = parse_opcode(self.program[position]);
@@ -212,6 +222,44 @@ mod tests {
 
         assert_eq!(vm.output().len(), 1);
         assert_eq!(vm.output()[0], 140);
+    }
+
+    #[test]
+    fn test_part2() {
+        let mut vm1 = VM::parse("3,9,8,9,10,9,4,9,99,-1,8");
+        assert_eq!(vm1.quick_run(&[8]), 1);
+        assert_eq!(vm1.quick_run(&[7]), 0);
+        assert_eq!(vm1.quick_run(&[9]), 0);
+
+        let mut vm2 = VM::parse("3,9,7,9,10,9,4,9,99,-1,8");
+        assert_eq!(vm2.quick_run(&[8]), 0);
+        assert_eq!(vm2.quick_run(&[7]), 1);
+        assert_eq!(vm2.quick_run(&[9]), 0);
+
+        let mut vm3 = VM::parse("3,3,1108,-1,8,3,4,3,99");
+        assert_eq!(vm3.quick_run(&[8]), 1);
+        assert_eq!(vm3.quick_run(&[7]), 0);
+        assert_eq!(vm3.quick_run(&[9]), 0);
+
+        let mut vm4 = VM::parse("3,3,1107,-1,8,3,4,3,99");
+        assert_eq!(vm4.quick_run(&[8]), 0);
+        assert_eq!(vm4.quick_run(&[7]), 1);
+        assert_eq!(vm4.quick_run(&[9]), 0);
+
+        let mut vm5 = VM::parse("3,12,6,12,15,1,13,14,13,4,13,99,-1,0,1,9");
+        assert_eq!(vm5.quick_run(&[0]), 0);
+        assert_eq!(vm5.quick_run(&[-1]), 1);
+        assert_eq!(vm5.quick_run(&[1]), 1);
+
+        let mut vm6 = VM::parse("3,3,1105,-1,9,1101,0,0,12,4,12,99,1");
+        assert_eq!(vm6.quick_run(&[0]), 0);
+        assert_eq!(vm6.quick_run(&[-1]), 1);
+        assert_eq!(vm6.quick_run(&[1]), 1);
+
+        let mut vm7 = VM::parse("3,21,1008,21,8,20,1005,20,22,107,8,21,20,1006,20,31,1106,0,36,98,0,0,1002,21,125,20,4,20,1105,1,46,104,999,1105,1,46,1101,1000,1,20,4,20,1105,1,46,98,99");
+        assert_eq!(vm7.quick_run(&[-4]), 999);
+        assert_eq!(vm7.quick_run(&[8]), 1000);
+        assert_eq!(vm7.quick_run(&[14]), 1001);
     }
 
     #[test]
