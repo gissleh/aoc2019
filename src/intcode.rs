@@ -6,6 +6,14 @@ pub struct VM {
     input: Vec<i32>,
     input_pos: usize,
     output: Vec<i32>,
+    output_pos: usize,
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub enum StepResult {
+    Continue,
+    Exit,
+    InputRequired,
 }
 
 impl VM {
@@ -15,10 +23,18 @@ impl VM {
         self.input.clear();
         self.input_pos = 0;
         self.output.clear();
+        self.output_pos = 0;
     }
 
     pub fn push_input(&mut self, v: i32) {
         self.input.push(v);
+    }
+
+    pub fn read_output(&mut self) -> &[i32] {
+        let output_pos = self.output_pos;
+        self.output_pos = self.output.len();
+
+        &self.output[output_pos..]
     }
 
     pub fn output(&self) -> &[i32] {
@@ -88,8 +104,13 @@ impl VM {
         }
     }
 
-    pub fn run(&mut self) {
-        while !self.step() {}
+    pub fn run(&mut self) -> StepResult {
+        loop {
+            let result = self.step();
+            if result != StepResult::Continue {
+                return result;
+            }
+        }
     }
 
     pub fn quick_run(&mut self, input: &[i32]) -> i32 {
@@ -102,7 +123,7 @@ impl VM {
         *self.output.last().unwrap()
     }
 
-    pub fn step(&mut self) -> bool {
+    pub fn step(&mut self) -> StepResult {
         let position = self.program_pos;
         let (opcode, m1, m2, m3) = parse_opcode(self.program[position]);
 
@@ -114,7 +135,7 @@ impl VM {
                     self.read(position + 1, m1) + self.read(position + 2, m2)
                 );
 
-                false
+                StepResult::Continue
             }
             2 => {
                 self.program_pos += 4;
@@ -123,23 +144,32 @@ impl VM {
                     self.read(position + 1, m1) * self.read(position + 2, m2)
                 );
 
-                false
+                StepResult::Continue
             }
             3 => {
-                self.program_pos += 2;
-                self.write(
-                    position + 1, m3,
-                    self.input[self.input_pos],
-                );
-                self.input_pos += 1;
+                if self.input_pos == self.input.len() {
+                    StepResult::InputRequired
+                } else {
+                    self.program_pos += 2;
+                    self.write(
+                        position + 1, m3,
+                        self.input[self.input_pos],
+                    );
+                    self.input_pos += 1;
 
-                false
+                    if self.input_pos == self.input.len() {
+                        self.input_pos = 0;
+                        self.input.clear();
+                    }
+
+                    StepResult::Continue
+                }
             }
             4 => {
                 self.program_pos += 2;
                 self.output.push(self.read(position + 1, m1));
 
-                false
+                StepResult::Continue
             }
             5 => {
                 if self.read(position + 1, m1) != 0 {
@@ -148,7 +178,7 @@ impl VM {
                     self.program_pos += 3;
                 }
 
-                false
+                StepResult::Continue
             }
             6 => {
                 if self.read(position + 1, m1) == 0 {
@@ -157,7 +187,7 @@ impl VM {
                     self.program_pos += 3;
                 }
 
-                false
+                StepResult::Continue
             }
             7 => {
                 self.program_pos += 4;
@@ -165,7 +195,7 @@ impl VM {
                     (self.read(position + 1, m1) < self.read(position + 2, m2)) as i32,
                 );
 
-                false
+                StepResult::Continue
             }
             8 => {
                 self.program_pos += 4;
@@ -173,10 +203,10 @@ impl VM {
                     (self.read(position + 1, m1) == self.read(position + 2, m2)) as i32,
                 );
 
-                false
+                StepResult::Continue
             }
             99 => {
-                true
+                StepResult::Exit
             }
             _ => panic!("Unknown opcode {}", opcode)
         }
@@ -190,6 +220,7 @@ impl VM {
             input: Vec::with_capacity(16),
             input_pos: 0,
             output: Vec::with_capacity(16),
+            output_pos: 0,
         }
     }
 
@@ -209,16 +240,16 @@ mod tests {
 
     #[test]
     fn test_vm() {
-        let mut vm = VM::parse("103,13,1001,13,5,13,11002,13,14,14,4,14,99,5,5");
+        let mut vm = VM::parse("103,13,1001,13,5,13,1002,13,14,14,4,14,99,5,5");
         vm.reset();
 
         vm.push_input(5);
 
-        assert_eq!(vm.step(), false);
-        assert_eq!(vm.step(), false);
-        assert_eq!(vm.step(), false);
-        assert_eq!(vm.step(), false);
-        assert_eq!(vm.step(), true);
+        assert_eq!(vm.step(), StepResult::Continue);
+        assert_eq!(vm.step(), StepResult::Continue);
+        assert_eq!(vm.step(), StepResult::Continue);
+        assert_eq!(vm.step(), StepResult::Continue);
+        assert_eq!(vm.step(), StepResult::Exit);
 
         assert_eq!(vm.output().len(), 1);
         assert_eq!(vm.output()[0], 140);
@@ -260,6 +291,15 @@ mod tests {
         assert_eq!(vm7.quick_run(&[-4]), 999);
         assert_eq!(vm7.quick_run(&[8]), 1000);
         assert_eq!(vm7.quick_run(&[14]), 1001);
+    }
+
+    #[test]
+    fn test_read_output() {
+        let mut vm = VM::parse("104,1,104,2,104,3,99");
+
+        assert_eq!(vm.run(), StepResult::Exit);
+        assert_eq!(vm.read_output(), &[1, 2, 3]);
+        assert_eq!(vm.read_output(), &[]);
     }
 
     #[test]
