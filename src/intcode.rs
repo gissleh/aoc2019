@@ -166,6 +166,11 @@ impl VM {
                 }
             }
             4 => {
+                if self.output_pos > 0 && self.output_pos == self.output.len() {
+                    self.output_pos = 0;
+                    self.output.clear();
+                }
+
                 self.program_pos += 2;
                 self.output.push(self.read(position + 1, m1));
 
@@ -242,6 +247,8 @@ mod tests {
     fn test_vm() {
         let mut vm = VM::parse("103,13,1001,13,5,13,1002,13,14,14,4,14,99,5,5");
         vm.reset();
+
+        assert_eq!(vm.step(), StepResult::InputRequired);
 
         vm.push_input(5);
 
