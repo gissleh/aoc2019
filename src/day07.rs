@@ -1,6 +1,7 @@
 use common::aoc::{load_input, run_many, print_time, print_result, run_many_mut};
 use common::intcode::{VM, StepResult};
 use common::math::Permutations;
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 fn main() {
     let input = load_input("day07");
@@ -25,17 +26,27 @@ fn parse_input(input: &str) -> (VM, VM) {
 
 fn part1(vm: &mut VM) -> i32 {
     let mut best_signal = 0;
-
+    let mut cache: HashMap<i64, i32> = HashMap::new();
     let mut perm = Permutations::new(&[0, 1, 2, 3, 4]);
+
     while let Some(phases) = perm.next() {
         let mut signal = 0;
 
         for phase in phases {
+            let cache_key = ((std::i32::MAX as i64) * signal as i64) + *phase as i64;
+            if let Some(cached_signal) = cache.get(&cache_key) {
+                signal = *cached_signal;
+                continue;
+            }
+
             vm.reset();
             vm.push_input(*phase);
             vm.push_input(signal);
             vm.run();
-            signal = *vm.output().last().unwrap()
+
+            signal = *vm.output().last().unwrap();
+
+            cache.insert(cache_key, signal);
         }
 
         if signal > best_signal {
