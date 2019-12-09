@@ -1,7 +1,7 @@
 use common::aoc::{load_input, run_many, print_time, print_result, run_many_mut};
 use common::intcode::{VM, StepResult};
 use common::math::Permutations;
-use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::collections::{HashMap};
 
 fn main() {
     let input = load_input("day07");
