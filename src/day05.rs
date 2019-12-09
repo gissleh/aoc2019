@@ -22,14 +22,14 @@ fn parse_input(input: &str) -> (VM, VM) {
     (vm.clone(), vm.clone())
 }
 
-fn part1(vm: &mut VM) -> i32 {
+fn part1(vm: &mut VM) -> i64 {
     vm.reset();
     vm.push_input(1);
     vm.run();
     *vm.output().last().unwrap()
 }
 
-fn part2(vm: &mut VM) -> i32 {
+fn part2(vm: &mut VM) -> i64 {
     vm.reset();
     vm.push_input(5);
     vm.run();

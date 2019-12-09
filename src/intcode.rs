@@ -1,11 +1,12 @@
 #[derive(Clone)]
 pub struct VM {
-    initial_program: Vec<i32>,
-    program: Vec<i32>,
+    initial_program: Vec<i64>,
+    program: Vec<i64>,
     program_pos: usize,
-    input: Vec<i32>,
+    relative_base: i64,
+    input: Vec<i64>,
     input_pos: usize,
-    output: Vec<i32>,
+    output: Vec<i64>,
     output_pos: usize,
 }
 
@@ -18,51 +19,61 @@ pub enum StepResult {
 
 impl VM {
     pub fn reset(&mut self) {
+        self.program.resize(self.initial_program.len(), 0);
         self.program.copy_from_slice(&self.initial_program);
         self.program_pos = 0;
+        self.relative_base = 0;
         self.input.clear();
         self.input_pos = 0;
         self.output.clear();
         self.output_pos = 0;
     }
 
-    pub fn push_input(&mut self, v: i32) {
+    pub fn push_input(&mut self, v: i64) {
         self.input.push(v);
     }
 
-    pub fn read_output(&mut self) -> &[i32] {
+    pub fn read_output(&mut self) -> &[i64] {
         let output_pos = self.output_pos;
         self.output_pos = self.output.len();
 
         &self.output[output_pos..]
     }
 
-    pub fn output(&self) -> &[i32] {
+    pub fn output(&self) -> &[i64] {
         &self.output
     }
 
-    fn read(&self, addr: usize, mode: i32) -> i32 {
+    fn resolve_addr(&self, addr: usize, mode: i32) -> usize {
         match mode {
-            0 => self.program[self.program[addr] as usize],
-            1 => self.program[addr] as i32,
+            0 => self.program[addr] as usize,
+            1 => addr,
+            2 => (self.program[addr] + self.relative_base) as usize,
             _ => unreachable!(),
         }
     }
 
-    fn write(&mut self, addr: usize, mode: i32, v: i32) {
-        let addr = match mode {
-            0 => self.program[addr] as usize,
-            _ => panic!("mode {} not supported for write", mode),
-        };
+    fn ensure_memory(&mut self, addr: usize, mode: i32) {
+        let addr = self.resolve_addr(addr, mode);
+        if addr >= self.program.len() {
+            self.program.resize(addr + 9, 0);
+        }
+    }
 
+    fn read(&self, addr: usize, mode: i32) -> i64 {
+        self.program[self.resolve_addr(addr, mode)]
+    }
+
+    fn write(&mut self, addr: usize, mode: i32, v: i64) {
+        let addr = self.resolve_addr(addr, mode);
         self.program[addr] = v;
     }
 
     pub fn print_next(&self) {
         let position = self.program_pos;
-        let (opcode, m1, m2, m3) = parse_opcode(self.program[position]);
+        let (opcode, m1, m2, m3) = parse_opcode(self.program[position] as i32);
 
-        let chars = ['&', '='];
+        let chars = ['&', '=', 'r'];
 
         match opcode {
             1 => println!("{}{} + {}{} => {}{}",
@@ -99,6 +110,9 @@ impl VM {
                           chars[m2 as usize], self.program[position+2],
                           chars[m3 as usize], self.program[position+3],
             ),
+            9 => println!("relative({}{})",
+                          chars[m1 as usize], self.program[position+1],
+            ),
             99 => println!("exit"),
             _ => panic!("unknown opcode {}", opcode),
         }
@@ -113,7 +127,7 @@ impl VM {
         }
     }
 
-    pub fn quick_run(&mut self, input: &[i32]) -> i32 {
+    pub fn quick_run(&mut self, input: &[i64]) -> i64 {
         self.reset();
         for v in input {
             self.push_input(*v);
@@ -125,11 +139,15 @@ impl VM {
 
     pub fn step(&mut self) -> StepResult {
         let position = self.program_pos;
-        let (opcode, m1, m2, m3) = parse_opcode(self.program[position]);
+        let (opcode, m1, m2, m3) = parse_opcode(self.program[position] as i32);
 
         match opcode {
             1 => {
                 self.program_pos += 4;
+                self.ensure_memory(position + 1, m1);
+                self.ensure_memory(position + 2, m2);
+                self.ensure_memory(position + 3, m3);
+
                 self.write(
                     position + 3, m3,
                     self.read(position + 1, m1) + self.read(position + 2, m2)
@@ -139,6 +157,10 @@ impl VM {
             }
             2 => {
                 self.program_pos += 4;
+                self.ensure_memory(position + 1, m1);
+                self.ensure_memory(position + 2, m2);
+                self.ensure_memory(position + 3, m3);
+
                 self.write(
                     position + 3, m3,
                     self.read(position + 1, m1) * self.read(position + 2, m2)
@@ -151,8 +173,10 @@ impl VM {
                     StepResult::InputRequired
                 } else {
                     self.program_pos += 2;
+                    self.ensure_memory(position + 1, m1);
+
                     self.write(
-                        position + 1, m3,
+                        position + 1, m1,
                         self.input[self.input_pos],
                     );
                     self.input_pos += 1;
@@ -172,11 +196,15 @@ impl VM {
                 }
 
                 self.program_pos += 2;
+                self.ensure_memory(position + 1, m1);
+
                 self.output.push(self.read(position + 1, m1));
 
                 StepResult::Continue
             }
             5 => {
+                self.ensure_memory(position + 1, m1);
+
                 if self.read(position + 1, m1) != 0 {
                     self.program_pos = self.read(position + 2, m2) as usize;
                 } else {
@@ -186,6 +214,8 @@ impl VM {
                 StepResult::Continue
             }
             6 => {
+                self.ensure_memory(position + 1, m1);;
+
                 if self.read(position + 1, m1) == 0 {
                     self.program_pos = self.read(position + 2, m2) as usize;
                 } else {
@@ -196,17 +226,33 @@ impl VM {
             }
             7 => {
                 self.program_pos += 4;
+                self.ensure_memory(position + 1, m1);
+                self.ensure_memory(position + 2, m2);
+                self.ensure_memory(position + 3, m3);
+
                 self.write(position + 3, m3,
-                    (self.read(position + 1, m1) < self.read(position + 2, m2)) as i32,
+                    (self.read(position + 1, m1) < self.read(position + 2, m2)) as i64,
                 );
 
                 StepResult::Continue
             }
             8 => {
                 self.program_pos += 4;
+                self.ensure_memory(position + 1, m1);
+                self.ensure_memory(position + 2, m2);
+                self.ensure_memory(position + 3, m3);
+
                 self.write(position + 3, m3,
-                    (self.read(position + 1, m1) == self.read(position + 2, m2)) as i32,
+                    (self.read(position + 1, m1) == self.read(position + 2, m2)) as i64,
                 );
+
+                StepResult::Continue
+            }
+            9 => {
+                self.program_pos += 2;
+                self.ensure_memory(position + 1, m1);
+
+                self.relative_base += self.read(position + 1, m1);
 
                 StepResult::Continue
             }
@@ -217,11 +263,12 @@ impl VM {
         }
     }
 
-    pub fn new(initial_program: &[i32]) -> VM {
+    pub fn new(initial_program: &[i64]) -> VM {
         VM{
             initial_program: initial_program.to_vec(),
             program: initial_program.to_vec(),
             program_pos: 0,
+            relative_base: 0,
             input: Vec::with_capacity(16),
             input_pos: 0,
             output: Vec::with_capacity(16),
@@ -230,7 +277,7 @@ impl VM {
     }
 
     pub fn parse(program_data: &str) -> VM {
-        let data: Vec<i32> = program_data.split(',').map(|t| t.parse::<i32>().unwrap()).collect();
+        let data: Vec<i64> = program_data.split(',').map(|t| t.parse::<i64>().unwrap()).collect();
         Self::new(&data)
     }
 }
@@ -263,7 +310,7 @@ mod tests {
     }
 
     #[test]
-    fn test_part2() {
+    fn test_day05_part2() {
         let mut vm1 = VM::parse("3,9,8,9,10,9,4,9,99,-1,8");
         assert_eq!(vm1.quick_run(&[8]), 1);
         assert_eq!(vm1.quick_run(&[7]), 0);
@@ -298,6 +345,19 @@ mod tests {
         assert_eq!(vm7.quick_run(&[-4]), 999);
         assert_eq!(vm7.quick_run(&[8]), 1000);
         assert_eq!(vm7.quick_run(&[14]), 1001);
+    }
+
+    #[test]
+    fn test_day09_part1() {
+        let mut vm1 = VM::parse("109,1,204,-1,1001,100,1,100,1008,100,16,101,1006,101,0,99");
+        assert_eq!(vm1.run(), StepResult::Exit);
+        assert_eq!(vm1.output(), &[109,1,204,-1,1001,100,1,100,1008,100,16,101,1006,101,0,99]);
+
+        let mut vm3 = VM::parse("1102,34915192,34915192,7,4,7,99,0");
+        assert!(vm3.quick_run(&[]) >= 1000000000000000);
+
+        let mut vm3 = VM::parse("104,1125899906842624,99");
+        assert_eq!(vm3.quick_run(&[]), 1125899906842624);
     }
 
     #[test]

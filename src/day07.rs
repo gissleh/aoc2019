@@ -24,16 +24,16 @@ fn parse_input(input: &str) -> (VM, VM) {
     (vm.clone(), vm.clone())
 }
 
-fn part1(vm: &mut VM) -> i32 {
-    let mut best_signal = 0;
-    let mut cache: HashMap<i64, i32> = HashMap::new();
+fn part1(vm: &mut VM) -> i64 {
+    let mut best_signal: i64 = 0;
+    let mut cache: HashMap<i64, i64> = HashMap::new();
     let mut perm = Permutations::new(&[0, 1, 2, 3, 4]);
 
     while let Some(phases) = perm.next() {
-        let mut signal = 0;
+        let mut signal: i64 = 0;
 
         for phase in phases {
-            let cache_key = ((std::i32::MAX as i64) * signal as i64) + *phase as i64;
+            let cache_key = ((std::i32::MAX as i64) * signal) + *phase;
             if let Some(cached_signal) = cache.get(&cache_key) {
                 signal = *cached_signal;
                 continue;
@@ -57,7 +57,7 @@ fn part1(vm: &mut VM) -> i32 {
     best_signal
 }
 
-fn part2(vm: &mut VM) -> i32 {
+fn part2(vm: &mut VM) -> i64 {
     let mut best_signal = 0;
     let mut perm = Permutations::new(&[5, 6, 7, 8, 9]);
     let mut vms: Vec<VM> = (0..5).map(|_| vm.clone()).collect();
