@@ -52,6 +52,10 @@ pub fn print_result(label: &str, result: impl Display) {
     println!("Result ({}): {}", label, result);
 }
 
+pub fn print_result_multiline(label: &str, result: impl Display) {
+    println!("Result ({}):\n{}", label, result);
+}
+
 pub fn print_time(label: &str, ns: i64) {
     if ns > 1_000_000_000 {
         println!("Duration ({}): {:.3}s", label, (ns as f64) / (1_000_000_000 as f64));
