@@ -53,19 +53,20 @@ impl VM {
         }
     }
 
-    fn ensure_memory(&mut self, addr: usize, mode: i32) {
+    fn get_addr(&mut self, addr: usize, mode: i32) -> usize {
         let addr = self.resolve_addr(addr, mode);
         if addr >= self.program.len() {
             self.program.resize(addr + 9, 0);
         }
+
+        addr
     }
 
-    fn read(&self, addr: usize, mode: i32) -> i64 {
-        self.program[self.resolve_addr(addr, mode)]
+    fn read(&self, addr: usize) -> i64 {
+        self.program[addr]
     }
 
-    fn write(&mut self, addr: usize, mode: i32, v: i64) {
-        let addr = self.resolve_addr(addr, mode);
+    fn write(&mut self, addr: usize, v: i64) {
         self.program[addr] = v;
     }
 
@@ -144,27 +145,21 @@ impl VM {
         match opcode {
             1 => {
                 self.program_pos += 4;
-                self.ensure_memory(position + 1, m1);
-                self.ensure_memory(position + 2, m2);
-                self.ensure_memory(position + 3, m3);
+                let addr1 = self.get_addr(position + 1, m1);
+                let addr2 = self.get_addr(position + 2, m2);
+                let addr3 = self.get_addr(position + 3, m3);
 
-                self.write(
-                    position + 3, m3,
-                    self.read(position + 1, m1) + self.read(position + 2, m2)
-                );
+                self.write(addr3, self.read(addr2) + self.read(addr1));
 
                 StepResult::Continue
             }
             2 => {
                 self.program_pos += 4;
-                self.ensure_memory(position + 1, m1);
-                self.ensure_memory(position + 2, m2);
-                self.ensure_memory(position + 3, m3);
+                let addr1 = self.get_addr(position + 1, m1);
+                let addr2 = self.get_addr(position + 2, m2);
+                let addr3 = self.get_addr(position + 3, m3);
 
-                self.write(
-                    position + 3, m3,
-                    self.read(position + 1, m1) * self.read(position + 2, m2)
-                );
+                self.write(addr3, self.read(addr2) * self.read(addr1));
 
                 StepResult::Continue
             }
@@ -173,12 +168,9 @@ impl VM {
                     StepResult::InputRequired
                 } else {
                     self.program_pos += 2;
-                    self.ensure_memory(position + 1, m1);
+                    let addr1 = self.get_addr(position + 1, m1);
 
-                    self.write(
-                        position + 1, m1,
-                        self.input[self.input_pos],
-                    );
+                    self.write(addr1, self.input[self.input_pos]);
                     self.input_pos += 1;
 
                     if self.input_pos == self.input.len() {
@@ -196,17 +188,19 @@ impl VM {
                 }
 
                 self.program_pos += 2;
-                self.ensure_memory(position + 1, m1);
+                let addr1 = self.get_addr(position + 1, m1);
 
-                self.output.push(self.read(position + 1, m1));
+                self.output.push(self.read(addr1));
 
                 StepResult::Continue
             }
             5 => {
-                self.ensure_memory(position + 1, m1);
+                let addr1 = self.get_addr(position + 1, m1);
 
-                if self.read(position + 1, m1) != 0 {
-                    self.program_pos = self.read(position + 2, m2) as usize;
+                if self.read(addr1) != 0 {
+                    let addr2 = self.get_addr(position + 2, m2);
+
+                    self.program_pos = self.read(addr2) as usize;
                 } else {
                     self.program_pos += 3;
                 }
@@ -214,10 +208,12 @@ impl VM {
                 StepResult::Continue
             }
             6 => {
-                self.ensure_memory(position + 1, m1);;
+                let addr1 = self.get_addr(position + 1, m1);
 
-                if self.read(position + 1, m1) == 0 {
-                    self.program_pos = self.read(position + 2, m2) as usize;
+                if self.read(addr1) == 0 {
+                    let addr2 = self.get_addr(position + 2, m2);
+
+                    self.program_pos = self.read(addr2) as usize;
                 } else {
                     self.program_pos += 3;
                 }
@@ -226,33 +222,33 @@ impl VM {
             }
             7 => {
                 self.program_pos += 4;
-                self.ensure_memory(position + 1, m1);
-                self.ensure_memory(position + 2, m2);
-                self.ensure_memory(position + 3, m3);
+                let addr1 = self.get_addr(position + 1, m1);
+                let addr2 = self.get_addr(position + 2, m2);
+                let addr3 = self.get_addr(position + 3, m3);
 
-                self.write(position + 3, m3,
-                    (self.read(position + 1, m1) < self.read(position + 2, m2)) as i64,
+                self.write(addr3,
+                    (self.read(addr1) < self.read(addr2)) as i64,
                 );
 
                 StepResult::Continue
             }
             8 => {
                 self.program_pos += 4;
-                self.ensure_memory(position + 1, m1);
-                self.ensure_memory(position + 2, m2);
-                self.ensure_memory(position + 3, m3);
+                let addr1 = self.get_addr(position + 1, m1);
+                let addr2 = self.get_addr(position + 2, m2);
+                let addr3 = self.get_addr(position + 3, m3);
 
-                self.write(position + 3, m3,
-                    (self.read(position + 1, m1) == self.read(position + 2, m2)) as i64,
+                self.write(addr3,
+                    (self.read(addr1) == self.read(addr2)) as i64,
                 );
 
                 StepResult::Continue
             }
             9 => {
                 self.program_pos += 2;
-                self.ensure_memory(position + 1, m1);
+                let addr1 = self.get_addr(position + 1, m1);
 
-                self.relative_base += self.read(position + 1, m1);
+                self.relative_base += self.read(addr1);
 
                 StepResult::Continue
             }
