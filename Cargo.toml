@@ -112,3 +112,4 @@ path = "src/day25.rs"
 [dependencies]
 chrono = "0.4.6"
 time = "0.1.40"
+num = "0.2.0"
