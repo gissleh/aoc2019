@@ -1,6 +1,5 @@
 use common::aoc::{load_input, run_many, print_time, print_result};
-use common::math::{Grid, grid_direction, direction_magnitude};
-use std::cmp::Ordering;
+use common::math::{Grid, grid_direction, direction_atan2, grid_direction_len, cmp_f64};
 
 fn main() {
     let input = load_input("day10");
@@ -66,42 +65,35 @@ impl AsteroidField {
 
     fn destroy_asteroids(&self, x: isize, y: isize, bet_number: isize) -> (isize, isize) {
         let asteroids = self.index_asteroids();
-        let mut directions: Vec<(usize, (isize, isize))> = asteroids.iter().enumerate()
-            .map(|(i, (x2, y2))| (i, direction_magnitude(x, y, *x2, *y2)))
+        let mut directions: Vec<(usize, (isize, isize, isize))> = asteroids.iter().enumerate()
+            .map(|(i, (x2, y2))| (i, grid_direction_len(x, y, *x2, *y2)))
             .collect();
         let mut destroyed = vec![false; directions.len()];
 
-        directions.sort_by(|(_, (ad, am)), (_, (bd, bm))| {
-            if ad == bd {
-                if am > bm {
-                    Ordering::Greater
-                } else if am < bm {
-                    Ordering::Less
-                } else {
-                    Ordering::Equal
-                }
-            } else if ad > bd {
-                Ordering::Greater
+        let atan2s: Vec<f64> = directions.iter().map(|(_, (dx, dy, _))| direction_atan2(*dx, *dy)).collect();
+        directions.sort_by(|(i, (adx, ady, am)), (j, (bdx, bdy, bm))| {
+            if adx == bdx && ady == bdy {
+                am.cmp(bm)
             } else {
-                Ordering::Less
+                cmp_f64(atan2s[*i], atan2s[*j])
             }
         });
 
         let mut number = 0;
-        let mut prev_direction = -1;
+        let mut prev_direction: (isize, isize) = (-999, -999);
 
         loop {
-            for (i, (dir, _)) in directions.iter() {
+            for (i, (dx, dy, _)) in directions.iter() {
                 if destroyed[*i] {
                     continue;
                 }
-                if prev_direction == *dir {
+                if prev_direction == (*dx, *dy) {
                     continue;
                 }
 
                 number += 1;
                 destroyed[*i] = true;
-                prev_direction = *dir;
+                prev_direction = (*dx, *dy);
 
                 if number == bet_number {
                     return asteroids[*i];

@@ -1,5 +1,6 @@
 use num::{Integer, abs};
 use std::f64::consts::PI;
+use std::cmp::Ordering;
 
 pub struct Permutations<T> where T : Clone + Copy + std::fmt::Debug {
     data: Vec<T>,
@@ -70,51 +71,6 @@ impl<T> Permutations<T> where T : Clone + Copy + std::fmt::Debug {
     }
 }
 
-pub struct GridDirectionIterator {
-    index: isize,
-    x: isize,
-    y: isize,
-    width: isize,
-    height: isize,
-    prev: (isize, isize),
-}
-
-impl Iterator for GridDirectionIterator {
-    type Item = (isize, isize);
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.index == ((2 * self.width) + (2 * self.height)) - 3 {
-            None
-        } else {
-            let w = self.width;
-            let h = self.height;
-            let wh = w + h - 1;
-            let whw = wh + w - 1;
-            let whwh = whw + h - 1;
-
-            let (x2, y2) = if self.index < w {
-                (self.index, 0)
-            } else if self.index < wh {
-                (w - 1, self.index - (w) + 1)
-            } else if self.index < whw {
-                (whw - self.index, h - 1)
-            } else {
-                (0, whwh - self.index)
-            };
-
-            self.index += 1;
-
-            let (dx, dy) = grid_direction(self.x, self.y, x2, y2);
-            if self.prev == (dx, dy) {
-                self.next()
-            } else {
-                self.prev = (dx, dy);
-                Some((dx, dy))
-            }
-        }
-    }
-}
-
 #[derive(Clone)]
 pub struct Grid<T> {
     data: Vec<T>,
@@ -152,19 +108,6 @@ impl<T> Grid<T> where T: Clone + Copy + std::fmt::Debug {
         self.data[index] = v;
     }
 
-    pub fn directions(&self, x: isize, y: isize) -> GridDirectionIterator {
-        let height = (self.data.len() / self.width) as isize;
-
-        return GridDirectionIterator{
-            index: 0,
-            width: (3 * self.width) as isize,
-            height: (3 * height),
-            x: x + self.offset_x + (self.width as isize),
-            y: y + self.offset_y + height,
-            prev: (0, 0),
-        }
-    }
-
     pub fn new(width: usize, height: usize, offset_x: isize, offset_y: isize, default_value: T) -> Grid<T> {
         Grid{
             width, offset_x, offset_y, default_value,
@@ -174,27 +117,37 @@ impl<T> Grid<T> where T: Clone + Copy + std::fmt::Debug {
 }
 
 pub fn grid_direction(x1: isize, y1: isize, x2: isize, y2: isize) -> (isize, isize) {
+    let (dx, dy, _) = grid_direction_len(x1, y1, x2, y2);
+
+    (dx, dy)
+}
+
+pub fn grid_direction_len(x1: isize, y1: isize, x2: isize, y2: isize) -> (isize, isize, isize) {
     let diff_x = x2 - x1;
     let diff_y = y2 - y1;
     let gcd = abs(diff_x).gcd(&diff_y);
 
     if gcd == 0 {
-        return (0, 0);
+        return (0, 0, 0);
     }
 
-    (diff_x / gcd, diff_y / gcd)
+    (diff_x / gcd, diff_y / gcd, gcd)
 }
 
-pub fn direction_magnitude(x1: isize, y1: isize, x2: isize, y2: isize) -> (isize, isize) {
-    let diff_x = x2 - x1;
-    let diff_y = y2 - y1;
+pub fn direction_atan2(dx: isize, dy: isize) -> f64 {
+    let atan2 = 90.0 + (dy as f64).atan2(dx as f64) * (180.0 / PI);
 
-    let mut atan2 = 90.0 + (diff_y as f64).atan2(diff_x as f64) * (180.0 / PI);
     if atan2 < 0.0 {
-        atan2 += 360.0;
+        atan2 + 360.0
+    } else {
+        atan2
     }
+}
 
-    ((atan2 * 1000.0) as isize, abs(diff_x) + abs(diff_y))
+pub fn cmp_f64(a: f64, b: f64) -> Ordering {
+    let bf = (b * 1000.0) as i32;
+
+    ((a * 100.0) as i32).cmp(&bf)
 }
 
 #[cfg(test)]
