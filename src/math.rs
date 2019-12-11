@@ -100,7 +100,7 @@ impl<T> Grid<T> where T: Clone + Copy + std::fmt::Debug {
     }
 
     pub fn get(&self, x: isize, y: isize) -> T {
-        return self.data[self.index(x, y)]
+        self.data[self.index(x, y)]
     }
 
     pub fn set(&mut self, x: isize, y: isize, v: T) {
