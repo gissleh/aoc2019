@@ -145,9 +145,9 @@ pub fn direction_atan2(dx: isize, dy: isize) -> f64 {
 }
 
 pub fn cmp_f64(a: f64, b: f64) -> Ordering {
-    let bf = (b * 1000.0) as i32;
+    let bi = (b * 1000.0) as i32;
 
-    ((a * 100.0) as i32).cmp(&bf)
+    ((a * 1000.0) as i32).cmp(&bi)
 }
 
 #[cfg(test)]
@@ -207,14 +207,10 @@ mod tests {
     }
 
     #[test]
-    fn test_grid_iterator_directions() {
-        let mut grid = Grid::new(5, 5, 2, 2, 0);
-        let directions: Vec<(isize, isize)> = grid.directions(0, 0).collect();
-
-        for (dx, dy) in directions.iter().cloned() {
-            println!("{}, {}", dx, dy);
-        }
-
-        assert_eq!(directions.len(), 8);
+    fn test_grid_direction_atan2() {
+        assert_eq!(direction_atan2(0, -1), 0.0);
+        assert_eq!(direction_atan2(1, 0), 90.0);
+        assert_eq!(direction_atan2(0, 1), 180.0);
+        assert_eq!(direction_atan2(-1, 0), 270.0);
     }
 }

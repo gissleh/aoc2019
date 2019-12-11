@@ -70,7 +70,11 @@ impl AsteroidField {
             .collect();
         let mut destroyed = vec![false; directions.len()];
 
-        let atan2s: Vec<f64> = directions.iter().map(|(_, (dx, dy, _))| direction_atan2(*dx, *dy)).collect();
+        let mut atan2s: Vec<f64> = vec![-1.0; asteroids.len()];
+        for (i, (dx, dy, _)) in directions.iter() {
+            atan2s[*i] = direction_atan2(*dx, *dy);
+        }
+
         directions.sort_by(|(i, (adx, ady, am)), (j, (bdx, bdy, bm))| {
             if adx == bdx && ady == bdy {
                 am.cmp(bm)
@@ -88,6 +92,9 @@ impl AsteroidField {
                     continue;
                 }
                 if prev_direction == (*dx, *dy) {
+                    continue;
+                }
+                if *dx == 0 && *dy == 0 {
                     continue;
                 }
 
