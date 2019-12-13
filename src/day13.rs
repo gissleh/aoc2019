@@ -1,9 +1,6 @@
 use common::aoc::{load_input, run_many, print_time, print_result};
-use common::grid::{BigGrid, Grid};
 use common::intcode::VM;
 use num::clamp;
-use std::io::Write;
-use term::stdout;
 
 fn main() {
     let input = load_input("day13");
@@ -40,45 +37,27 @@ fn part2(mut game: Game) -> i64 {
 #[derive(Clone)]
 struct Game {
     vm: VM,
-    game_grid: Grid<u8>,
     block_count: usize,
     score: i64,
-    ball_pos: (isize, isize),
-    paddle_pos: (isize, isize),
+    ball_pos: (i64, i64),
+    paddle_pos: (i64, i64),
 }
 
 impl Game {
     fn setup(&mut self) {
         self.vm.run();
 
-        let mut source_grid = BigGrid::new(1024, 1024, 0u8);
-
         let output = self.vm.read_output();
         for i in 0..(output.len() / 3) {
             let i = i * 3;
-            let x = output[i] as isize;
-            let y = output[i + 1] as isize;
-            let v = output[i + 2] as u8;
 
-            let cell = source_grid.get_mut(x, y);
-            if *cell == 2 && v != 2 {
-                self.block_count -= 1;
-            } else if v == 2 && *cell != 2 {
-                self.block_count += 1;
-            }
-
-            if v == 4 {
-                self.ball_pos = (x, y);
-            }
-
-            if v == 3 {
-                self.paddle_pos = (x, y);
-            }
-
-            *cell = v;
+            match output[i + 2]  {
+                2 => self.block_count += 1,
+                3 => self.paddle_pos = (output[i], output[i + 1]),
+                4 => self.ball_pos = (output[i], output[i + 1]),
+                _ => {}
+            };
         }
-
-        self.game_grid = source_grid.to_exact();
     }
 
     fn reset(&mut self) {
@@ -96,59 +75,29 @@ impl Game {
         let output = self.vm.read_output();
         for i in 0..(output.len() / 3) {
             let i = i * 3;
-            let x = output[i] as isize;
-            let y = output[i + 1] as isize;
+            let x = output[i];
+            let y = output[i + 1];
 
             if x == -1 && y == 0 {
+                if self.score != output[i + 2] {
+                    self.block_count -= 1;
+                }
+
                 self.score = output[i + 2];
                 continue;
             }
 
-            let v = output[i + 2] as u8;
-            let cell = self.game_grid.get_mut(x, y);
-            if *cell == 2 && v != 2 {
-                self.block_count -= 1;
-            } else if v == 2 && *cell != 2 {
-                self.block_count += 1;
-            }
-
-            if v == 4 {
-                self.ball_pos = (x, y);
-            }
-
-            if v == 3 {
-                self.paddle_pos = (x, y);
-            }
-
-            *cell = v;
+            match output[i + 2] {
+                3 => self.paddle_pos = (x, y),
+                4 => self.ball_pos = (x, y),
+                _ => {}
+            };
         }
-    }
-
-    #[allow(dead_code)]
-    fn visualize(&self) -> String {
-        let mut s = String::with_capacity(20+20*42);
-        for y in 0..=20 {
-            for x in 0..=42 {
-                match self.game_grid.get(x, y) {
-                    0 => s.push(' '),
-                    1 => s.push('#'),
-                    2 => s.push('%'),
-                    3 => s.push('='),
-                    4 => s.push('¤'),
-                    _ => s.push(' '),
-                };
-            }
-
-            s.push('\n');
-        }
-
-        s
     }
 
     fn new(input: &str) -> Game {
         Game{
             vm: VM::parse(input),
-            game_grid: Grid::empty(0),
             block_count: 0,
             ball_pos: (0, 0),
             paddle_pos: (0, 0),

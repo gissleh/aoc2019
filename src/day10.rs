@@ -1,5 +1,5 @@
 use common::aoc::{load_input, run_many, print_time, print_result};
-use common::math::{Grid, grid_direction, direction_atan2, grid_direction_len, cmp_f64};
+use common::grid::{Grid, grid_direction, direction_atan2, grid_direction_len, cmp_f64};
 
 fn main() {
     let input = load_input("day10");

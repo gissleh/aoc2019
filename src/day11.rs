@@ -1,7 +1,7 @@
 use common::aoc::{load_input, run_many, print_result, print_time, print_result_multiline};
 use common::intcode::{VM, StepResult};
 use std::collections::{HashSet, HashMap};
-use common::math::Grid;
+use common::grid::Grid;
 
 fn main() {
     let input = load_input("day11");
