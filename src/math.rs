@@ -71,85 +71,6 @@ impl<T> Permutations<T> where T : Clone + Copy + std::fmt::Debug {
     }
 }
 
-#[derive(Clone)]
-pub struct Grid<T> {
-    data: Vec<T>,
-    default_value: T,
-    width: usize,
-    offset_x: isize,
-    offset_y: isize,
-}
-
-impl<T> Grid<T> where T: Clone + Copy + std::fmt::Debug {
-    fn index(&self, x: isize, y: isize) -> usize {
-        ((y + self.offset_y) as usize * self.width) + (x + self.offset_x) as usize
-    }
-
-    pub fn set_data(&mut self, data: &[T]) {
-        if data.len() != self.data.len() {
-            panic!("Data length mismatch");
-        }
-
-        self.data.copy_from_slice(data);
-    }
-
-    pub fn clear(&mut self) {
-        let len = self.data.len();
-        self.data.truncate(0);
-        self.data.resize(len, self.default_value);
-    }
-
-    pub fn get(&self, x: isize, y: isize) -> T {
-        self.data[self.index(x, y)]
-    }
-
-    pub fn set(&mut self, x: isize, y: isize, v: T) {
-        let index = self.index(x, y);
-        self.data[index] = v;
-    }
-
-    pub fn new(width: usize, height: usize, offset_x: isize, offset_y: isize, default_value: T) -> Grid<T> {
-        Grid{
-            width, offset_x, offset_y, default_value,
-            data: vec![default_value; width * height],
-        }
-    }
-}
-
-pub fn grid_direction(x1: isize, y1: isize, x2: isize, y2: isize) -> (isize, isize) {
-    let (dx, dy, _) = grid_direction_len(x1, y1, x2, y2);
-
-    (dx, dy)
-}
-
-pub fn grid_direction_len(x1: isize, y1: isize, x2: isize, y2: isize) -> (isize, isize, isize) {
-    let diff_x = x2 - x1;
-    let diff_y = y2 - y1;
-    let gcd = abs(diff_x).gcd(&diff_y);
-
-    if gcd == 0 {
-        return (0, 0, 0);
-    }
-
-    (diff_x / gcd, diff_y / gcd, gcd)
-}
-
-pub fn direction_atan2(dx: isize, dy: isize) -> f64 {
-    let atan2 = 90.0 + (dy as f64).atan2(dx as f64) * (180.0 / PI);
-
-    if atan2 < 0.0 {
-        atan2 + 360.0
-    } else {
-        atan2
-    }
-}
-
-pub fn cmp_f64(a: f64, b: f64) -> Ordering {
-    let bi = (b * 1000.0) as i32;
-
-    ((a * 1000.0) as i32).cmp(&bi)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -176,41 +97,5 @@ mod tests {
             }
             hs.insert(v.to_vec());
         }
-    }
-
-    #[test]
-    fn test_grid_indexes() {
-        let mut grid = Grid::new(8, 8, 4, 4, 0);
-        grid.set(-4, -4, 16);
-        grid.set(-4, -3, 14);
-        grid.set(-1, 3, 17);
-
-        assert_eq!(grid.get(-4, -4), 16);
-        assert_eq!(grid.get(-4, -3), 14);
-        assert_eq!(grid.get(-1, 3), 17);
-        assert_eq!(grid.get(3, 3), 0);
-
-        grid.clear();
-
-        assert_eq!(grid.get(-4, -4), 0);
-        assert_eq!(grid.get(-4, -3), 0);
-        assert_eq!(grid.get(-1, 3), 0);
-        assert_eq!(grid.get(3, 3), 0);
-    }
-
-    #[test]
-    fn test_grid_direction() {
-        assert_eq!(grid_direction(0, 0, 6, 3), (2, 1));
-        assert_eq!(grid_direction(0, 0, 12, 6), (2, 1));
-        assert_eq!(grid_direction(0, 0, 1, 5), (1, 5));
-        assert_eq!(grid_direction(0, 0, -1, -5), (-1, -5));
-    }
-
-    #[test]
-    fn test_grid_direction_atan2() {
-        assert_eq!(direction_atan2(0, -1), 0.0);
-        assert_eq!(direction_atan2(1, 0), 90.0);
-        assert_eq!(direction_atan2(0, 1), 180.0);
-        assert_eq!(direction_atan2(-1, 0), 270.0);
     }
 }

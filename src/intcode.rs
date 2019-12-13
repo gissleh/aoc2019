@@ -29,6 +29,10 @@ impl VM {
         self.output_pos = 0;
     }
 
+    pub fn set_memory(&mut self, index: usize, v: i64) {
+        self.program[index] = v;
+    }
+
     pub fn push_input(&mut self, v: i64) {
         self.input.push(v);
     }
