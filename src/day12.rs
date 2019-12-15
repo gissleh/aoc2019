@@ -1,14 +1,16 @@
-use common::aoc::{load_input, run_many, print_time, print_result, run_once};
+use common::aoc::{load_input, run_many, print_time, print_result};
 use num::abs;
 use std::ops::{Add, Neg, AddAssign, SubAssign};
-use std::collections::{HashSet, HashMap};
+use std::collections::{BTreeMap};
+use std::hash::Hash;
+use num::Integer;
 
 fn main() {
     let input = load_input("day12");
 
     let (simulation, dur_parse) = run_many(10000, || Simulation::parse(&input));
     let (res_part1, dur_part1) = run_many(10000, || part1(simulation.clone(), 1000));
-    let (res_part2, dur_part2) = run_once(|| part2(simulation.clone()));
+    let (res_part2, dur_part2) = run_many(10, || part2(simulation.clone()));
 
     print_result("P1", res_part1);
     print_result("P2", res_part2);
@@ -18,7 +20,7 @@ fn main() {
     print_time("P2", dur_part2);
 }
 
-fn part1(mut simulation: Simulation, count: usize) -> i32 {
+fn part1(mut simulation: Simulation, count: usize) -> i64 {
     for _ in 0..count {
         simulation.simulate_step();
     }
@@ -27,71 +29,68 @@ fn part1(mut simulation: Simulation, count: usize) -> i32 {
 }
 
 fn part2(mut simulation: Simulation) -> usize {
-    let mut sets: Vec<HashMap<(Point, Point), usize>> = vec![HashMap::with_capacity(3068208); simulation.moons.len()];
-    let mut cycle_start: Vec<usize> = vec![0; simulation.moons.len()];
-    let mut cycle_lengths: Vec<usize> = vec![0; simulation.moons.len()];
-    let mut remaining = 4;
+    if simulation.moons.len() != 4 {
+        panic!("Only 4 moons supported");
+    }
+
+    let mut sets: Vec<BTreeMap<[(i64, i64); 4], usize>> = vec![BTreeMap::new(); 3];
+    let mut cycle_lengths = [0usize; 3];
+    let mut remaining = 3;
     let mut step_index = 0;
 
+    let mut velocities: Vec<Vec<i64>> = vec![Vec::with_capacity(simulation.moons.len()); 3];
+    let mut positions: Vec<Vec<i64>> = vec![Vec::with_capacity(simulation.moons.len()); 3];
+    let mut states = [(0, 0); 4];
+
     while remaining > 0 {
-        for (i, moon) in simulation.moons.iter().enumerate() {
+        for vel_axis in velocities.iter_mut() {
+            vel_axis.clear();
+        }
+        for pos_axis in positions.iter_mut() {
+            pos_axis.clear();
+        }
+
+        for moon_index in 0..4 {
+            let moon = &simulation.moons[moon_index];
+
+            let Point(px, py, pz) = moon.position;
+            let Point(vx, vy, vz) = moon.velocity;
+
+            positions[0].push(px);
+            positions[1].push(py);
+            positions[2].push(pz);
+            velocities[0].push(vx);
+            velocities[1].push(vy);
+            velocities[2].push(vz);
+        }
+
+        for i in 0..3 {
             if cycle_lengths[i] != 0 {
-                continue
+                continue;
             }
 
-            let state = (moon.position, moon.velocity);
+            for j in 0..positions.len() {
+                states[j] = (positions[i][j], velocities[i][j]);
+            }
 
-            if sets[i].get(&state).is_some() {
-                cycle_start[i] = sets[i][&state];
-                cycle_lengths[i] = 1 + step_index - sets[i][&state];
-
-                println!("C {} {} {}", i, cycle_start[i], cycle_lengths[i]);
+            if sets[i].get(&states).is_some() {
+                cycle_lengths[i] = step_index - sets[i][&states];
                 remaining -= 1;
-
-                sets[i].clear();
             } else {
-                sets[i].insert(state, step_index);
+                sets[i].insert(states.clone(), step_index);
             }
         }
 
         simulation.simulate_step();
-
         step_index += 1;
     }
 
-    let step_size = 1; // cycle_lengths.iter().min().cloned().unwrap();
-
-    let mut pos = cycle_lengths.iter().max().cloned().unwrap();;
-    while pos < 10000 {
-        let first = cycle_start[0] + ((pos - cycle_start[0]) % cycle_lengths[0]);
-        let mut failed = false;
-
-        print!("P {} {}", pos, first);
-        for i in 1..cycle_lengths.len() {
-            let cycle_pos = cycle_start[i] + ((pos - cycle_start[i]) % cycle_lengths[i]);
-
-            print!(" {}", cycle_pos);
-
-            if first != cycle_pos {
-                failed = true;
-                break;
-            }
-        }
-        println!();
-
-        if !failed {
-            break;
-        }
-
-        //C 3 47 522
-        //C 2 7 616
-        //C 1 201 522
-        //C 0 0 924
-
-        pos += step_size;
+    let mut current: usize = cycle_lengths[0];
+    for i in 1..3 {
+        current = current.lcm(&cycle_lengths[i]);
     }
 
-    pos
+    current
 }
 
 #[derive(Clone)]
@@ -117,7 +116,7 @@ impl Simulation {
         }
     }
 
-    fn total_energy(&self) -> i32 {
+    fn total_energy(&self) -> i64 {
         let mut total = 0;
 
         for moon in self.moons.iter() {
@@ -134,14 +133,6 @@ impl Simulation {
     }
 }
 
-fn cycle_pos(mut pos: usize, start: usize, length: usize) -> usize {
-    if pos < start {
-        pos += length;
-    }
-
-    start + ((pos - start) % length)
-}
-
 #[derive(Clone)]
 struct Moon {
     position: Point,
@@ -149,13 +140,13 @@ struct Moon {
 }
 
 impl Moon {
-    fn pot(&self) -> i32 {
+    fn pot(&self) -> i64 {
         let Point(x, y, z) = self.position;
 
         abs(x) + abs(y) + abs(z)
     }
 
-    fn kin(&self) -> i32 {
+    fn kin(&self) -> i64 {
         let Point(x, y, z) = self.velocity;
 
         abs(x) + abs(y) + abs(z)
@@ -188,8 +179,8 @@ impl Moon {
     }
 
     fn parse(line: &str) -> Moon {
-        let mut arr = [0; 3];
-        let mut parsed = 0;
+        let mut arr = [0i64; 3];
+        let mut parsed = 0i64;
         let mut sign = 1;
         let mut idx = 0;
 
@@ -197,7 +188,7 @@ impl Moon {
             match ch {
                 '0'..='9' => {
                     parsed *= 10;
-                    parsed += ((ch as u8) - ('0' as u8)) as i32;
+                    parsed += ((ch as u8) - ('0' as u8)) as i64;
                 }
                 '-' => {
                     sign = -1;
@@ -220,7 +211,7 @@ impl Moon {
 }
 
 #[derive(Eq, PartialEq, Copy, Clone, Hash, std::fmt::Debug)]
-struct Point (i32, i32, i32);
+struct Point (i64, i64, i64);
 
 impl Add for Point {
     type Output = Point;
@@ -311,12 +302,6 @@ mod tests {
     }
 
     const TEST_DATA_EASY: &str = "<x= -1, y=  0, z=  2>\n<x=  2, y=-10, z= -7>\n<x=  4, y= -8, z=  8>\n<x=  3, y=  5, z= -1>\n";
-
-    #[test]
-    fn test_cycle_pos() {
-        assert_eq!(cycle_pos(0, 2, 5), 5);
-        assert_eq!(cycle_pos(0, 201, 522), 522 - 201)
-    }
 
     #[test]
     fn test_part2() {
