@@ -40,79 +40,60 @@ impl ReactionChain {
     }
 
     fn min_opf(&self, fuel_count: u64) -> u64 {
-        let fuel_index = self.map.get("FUEL").cloned().unwrap();
-        let ore_index = self.map.get("ORE").cloned().unwrap();
-        let mut reactions: Vec<(usize, u64)> = Vec::with_capacity(self.list.len() * 2);
-        let mut handled = vec![false; self.list.len()];
+        let mut amounts = vec![0; self.list.len()];
+        let mut completed = vec![false; self.list.len()];
+        let mut deferred: Vec<usize> = Vec::with_capacity(self.list.len());
+        let mut remaining: Vec<usize> = (0..self.list.len()).collect();
+        let ore_index = self.map["ORE"];
+        let fuel_index = self.map["FUEL"];
 
-        reactions.push((fuel_index, fuel_count));
+        amounts[fuel_index] = fuel_count;
 
-        while reactions.len() > 1 || reactions[0].0 != ore_index {
-            let mut has_selected = false;
-            let mut selected = 0usize;
+        remaining.swap_remove(ore_index);
 
-            for i in 0..reactions.len() {
-                let (mat_i, amount_i) = reactions[i];
-                if amount_i == 0 || (mat_i != ore_index && (has_selected && selected != mat_i)) {
-                    continue;
+        while remaining.len() > 0 {
+            let mat_index = remaining.pop().unwrap();
+
+            // Fabricate not until all of the material is present.
+            let mut mise_en_place = true;
+            for dep_index in self.list[mat_index].dependents.iter().cloned() {
+                if !completed[dep_index] {
+                    mise_en_place = false;
+                    break;
                 }
-                let mut satisfied = true;
-                for dependent_index in self.list[mat_i].dependents.iter() {
-                    if !handled[*dependent_index] {
-                        satisfied = false;
-                        break;
-                    }
-                }
-                if !satisfied {
-                    continue;
-                }
+            }
+            if !mise_en_place {
+                // Save it for later.
+                deferred.push(mat_index);
 
-                if mat_i != ore_index {
-                    has_selected = true;
-                    selected = mat_i;
-                }
-
-                let mut combined_amount = 0;
-
-                for j in i+1..reactions.len() {
-                    let (mat_j, amount_j) = reactions[j];
-                    if mat_j != mat_i {
-                        continue
-                    }
-
-                    combined_amount += amount_j;
-                    reactions[j].1 = 0;
+                // Before quitting, make sure that there aren't any deferred materials.
+                if remaining.len() == 0 {
+                    remaining.extend(deferred.iter());
+                    deferred.clear();
                 }
 
-                let amount = amount_i + combined_amount;
-                reactions[i].1 = amount;
-
-                if mat_i == ore_index {
-                    continue;
-                }
-
-                let material = &self.list[mat_i];
-                let needed = if amount % material.amount == 0 { amount / material.amount } else { (amount / material.amount) + 1 };
-                for dep in material.dependencies.iter() {
-                    reactions.push((dep.index, dep.amount * needed));
-                }
-
-                reactions[i] = (mat_i, 0);
-                handled[mat_i] = true;
+                continue;
             }
 
-            let mut i = 0;
-            while i < reactions.len() {
-                let (_, amount_i) = reactions[i];
-                if amount_i == 0 {
-                    reactions.swap_remove(i);
-                } else {
-                    i += 1;
-                }
+            // Break it up into dependencies.
+            let material = &self.list[mat_index];
+            let amount = amounts[mat_index];
+            let needed = if amount % material.amount == 0 { amount / material.amount } else { (amount / material.amount) + 1 };
+            for dep in material.dependencies.iter() {
+                amounts[dep.index] += dep.amount * needed;
+            }
+
+            // Mark as completed, thus allowing dependencies to be manufactured.
+            completed[mat_index] = true;
+
+            // Before quitting, make sure that there aren't any deferred materials.
+            if remaining.len() == 0 {
+                remaining.extend(deferred.iter());
+                deferred.clear();
             }
         }
 
-        reactions[0].1
+        amounts[ore_index]
     }
 
     fn max_fpo(&self, ore_count: u64) -> u64 {
