@@ -1,7 +1,3 @@
-use num::{Integer, abs};
-use std::f64::consts::PI;
-use std::cmp::Ordering;
-
 pub struct Permutations<T> where T : Clone + Copy + std::fmt::Debug {
     data: Vec<T>,
     stack: Vec<usize>,
