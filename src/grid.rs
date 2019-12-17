@@ -111,8 +111,15 @@ pub struct Grid<T> {
     data: Vec<T>,
     default_value: T,
     width: usize,
+    height: usize,
     offset_x: isize,
     offset_y: isize,
+}
+
+impl<T> Grid<T> {
+    pub fn size(&self) -> (usize, usize) {
+        (self.width, self.height)
+    }
 }
 
 impl<T> Grid<T> where T: Clone + Copy + std::fmt::Debug {
@@ -138,6 +145,16 @@ impl<T> Grid<T> where T: Clone + Copy + std::fmt::Debug {
         self.data[self.index(x, y)]
     }
 
+    pub fn get_oob(&self, x: isize, y: isize) -> T {
+        let x = x + self.offset_x;
+        let y = y + self.offset_y;
+        if x < 0 || y < 0 || x >= self.width as isize || y >= self.height as isize {
+            return self.default_value;
+        }
+
+        self.data[self.index(x, y)]
+    }
+
     pub fn get_mut(&mut self, x: isize, y: isize) -> &mut T {
         let index = self.index(x, y);
 
@@ -151,7 +168,7 @@ impl<T> Grid<T> where T: Clone + Copy + std::fmt::Debug {
 
     pub fn new(width: usize, height: usize, offset_x: isize, offset_y: isize, default_value: T) -> Grid<T> {
         Grid{
-            width, offset_x, offset_y, default_value,
+            width, height, offset_x, offset_y, default_value,
             data: vec![default_value; width * height],
         }
     }
@@ -159,6 +176,7 @@ impl<T> Grid<T> where T: Clone + Copy + std::fmt::Debug {
     pub fn empty(default_value: T) -> Grid<T> {
         Grid{
             width: 0,
+            height: 0,
             offset_x: 0,
             offset_y: 0,
             default_value,

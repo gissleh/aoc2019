@@ -29,6 +29,10 @@ impl VM {
         self.output_pos = 0;
     }
 
+    pub fn peek_input(&self) -> &[i64] {
+        &self.input[self.input_pos..]
+    }
+
     pub fn set_memory(&mut self, index: usize, v: i64) {
         self.program[index] = v;
     }
