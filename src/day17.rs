@@ -180,7 +180,7 @@ fn part2(mut vm: VM, grid: &Grid<char>) -> i64 {
     let chars: String = path.iter().map(|n| (*n as u8 as char)).collect();
     let tokens: Vec<String> = chars.split(",").map(|s| String::from(s)).collect();
     let (indices, lengths) = find_patterns(&tokens).unwrap();
-    
+
     let mut offset = 0;
     while offset < tokens.len() {
         for i in 0..3 {
@@ -221,8 +221,8 @@ fn part2(mut vm: VM, grid: &Grid<char>) -> i64 {
 
 fn find_patterns(arr: &[String]) -> Option<([usize; 3], [usize; 3])>  {
     for i in 3..=10 {
-        for j in 3..=10 {
-            for k in 3..=10 {
+        for j in i..=10 {
+            for k in j..=10 {
                 for io in 0..arr.len() - (i - 1) {
                     for jo in 0..arr.len() - (j - 1) {
                         for ko in 0..arr.len() - (k - 1) {
