@@ -120,6 +120,9 @@ impl<T> Grid<T> {
     pub fn size(&self) -> (usize, usize) {
         (self.width, self.height)
     }
+    pub fn data(&self) -> &[T] {
+        &self.data
+    }
 }
 
 impl<T> Grid<T> where T: Clone + Copy + std::fmt::Debug {

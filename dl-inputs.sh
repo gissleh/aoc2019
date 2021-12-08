@@ -10,7 +10,7 @@ mkdir -p input
 
 CURRENT_DAY=$(date +"%e")
 
-for i in $(seq -f "%02g" 1 $CURRENT_DAY)
+for i in $(seq -f "%02g" 1 25)
 do
   i_nopad=${i##+(0)}
 
